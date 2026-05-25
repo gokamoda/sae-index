@@ -1,1 +1,0 @@
-huggingface-cli login $HF_TOKEN

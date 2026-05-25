@@ -1,5 +1,5 @@
 [project]
-name = "project"
+name = "sae-index"
 version = "0.1.0"
 description = "Add your description here"
 authors = [
@@ -12,14 +12,7 @@ dependencies = [
     "rich>=13.9.4",
     "pytz>=2025.2",
     "tqdm>=4.67.1",
-    "multiprocess<=0.70.17",
     "numpy>=2.3.4",
-    "transformers>=5.4.0",
-    "datasets>=3.2.0,<4.0.0", # keep v3 for download scripts
-    "scikit-learn>=1.4.0",
-    "matplotlib>=3.9.0",
-    "safetensors>=0.4.0",
-    "omegaconf>=2.3.0",
 ]
 
 
@@ -38,40 +31,6 @@ dev = [
     "ty>=0.0.23",
 ]
 
-[tool.uv]
-conflicts = [
-  [
-    { extra = "cpu" },
-    { extra = "gpu" },
-  ],
-]
-
-
-[project.optional-dependencies]
-cpu = ["torch==2.11.0"]
-gpu = ["torch==2.11.0"]
-
-[tool.uv.sources]
-torch = [
-  { index = "pytorch-cpu-mac", extra = "cpu", marker = "platform_system == 'macOS'" },
-  { index = "pytorch-cpu", extra = "cpu", marker = "platform_system != 'macOS'" },
-  { index = "pytorch-gpu", extra = "gpu" },
-]
-
-[[tool.uv.index]]
-name = "pytorch-cpu-mac"
-url = "https://pypi.python.org/simple"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-gpu"
-url = "https://download.pytorch.org/whl/cu126"
-explicit = true
 
 [tool.pytest.ini_options]
 pythonpath = "src"

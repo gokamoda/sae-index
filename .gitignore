@@ -12,3 +12,5 @@ sftp.json
 uv.lock
 build
 *.egg-info
+
+*.npz
