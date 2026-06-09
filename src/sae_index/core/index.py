@@ -307,19 +307,23 @@ class SAEActivationIndex:
     def get_feature_info(self, feature_id: int) -> dict:
         start = int(self.feature_offsets[feature_id])
         end = int(self.feature_offsets[feature_id + 1])
+        token_positions = self.token_positions[start:end]
         values = self.activation_values[start:end].astype(np.float32, copy=False)
         if len(values) == 0:
             max_activation = 0.0
             mean_activation = 0.0
+            token_ids: set[int] = set()
         else:
             max_activation = float(values.max())
             mean_activation = float(values.mean())
+            token_ids = set(self.token_ids[token_positions].astype(int).tolist())
         return {
             "feature_id": feature_id,
             "max_activation": max_activation,
             "mean_activation": mean_activation,
             "activation_frequency": float(len(values)) / max(1, len(self.token_ids)),
             "num_fires": len(values),
+            "token_ids": token_ids,
         }
 
     def get_histogram(self, feature_id: int) -> list[dict]:
