@@ -16,15 +16,6 @@ class ActivationExample:
 
 
 @dataclass
-class TokenActivationExample:
-    token_ids: NDArray[np.uint64]
-    target_token_position: int
-    feature_id: int | None
-    activation_value: float
-    prompt_id: int | None = None
-
-
-@dataclass
 class Prompt:
     prompt_id: int
     query_token_position: int
@@ -304,71 +295,6 @@ class SAEActivationIndex:
             )
         ]
 
-    def _get_max_activation_for_token_position(
-        self,
-        global_token_position: int,
-    ) -> tuple[int | None, float]:
-        matched_indices = np.flatnonzero(self.token_positions == global_token_position)
-        if len(matched_indices) == 0:
-            return None, 0.0
-        matched_values = self.activation_values[matched_indices].astype(
-            np.float32, copy=False
-        )
-        best_local_idx = int(matched_values.argmax())
-        best_flat_idx = int(matched_indices[best_local_idx])
-        feature_id = int(
-            np.searchsorted(self.feature_offsets, best_flat_idx, side="right") - 1
-        )
-        return feature_id, float(matched_values[best_local_idx])
-
-    def get_topk_token_activating_examples(
-        self,
-        token_id: int,
-        k: int,
-        window_size: int = 5,
-        offset: int = 0,
-    ) -> list[TokenActivationExample]:
-        matched_global_positions = np.flatnonzero(self.token_ids == token_id)
-        if len(matched_global_positions) == 0 or k <= 0:
-            return []
-
-        start = max(0, offset)
-        if start >= len(matched_global_positions):
-            return []
-
-        candidates: list[tuple[int, int | None, float]] = []
-        for _global_position in matched_global_positions[start:]:
-            global_position = int(_global_position)
-            feature_id, activation_value = self._get_max_activation_for_token_position(
-                global_token_position=global_position
-            )
-            candidates.append((global_position, feature_id, activation_value))
-
-        candidates.sort(key=lambda x: x[2], reverse=True)
-        selected = candidates[:k]
-
-        examples: list[TokenActivationExample] = []
-        for global_position, feature_id, activation_value in selected:
-            prompt = self._get_prompt(center_token_global_position=global_position)
-            global_prompt_start = global_position - prompt.query_token_position
-            global_prompt_end = global_prompt_start + len(prompt.token_ids)
-            global_span_start = max(global_prompt_start, global_position - window_size)
-            global_span_end = min(global_prompt_end, global_position + window_size + 1)
-            local_span_start = global_span_start - global_prompt_start
-            local_span_end = global_span_end - global_prompt_start
-
-            examples.append(
-                TokenActivationExample(
-                    token_ids=prompt.token_ids[local_span_start:local_span_end],
-                    target_token_position=prompt.query_token_position
-                    - local_span_start,
-                    feature_id=feature_id,
-                    activation_value=activation_value,
-                    prompt_id=prompt.prompt_id,
-                )
-            )
-        return examples
-
     @property
     def hidden_size(self) -> int:
         return len(self.feature_offsets) - 1
@@ -381,19 +307,23 @@ class SAEActivationIndex:
     def get_feature_info(self, feature_id: int) -> dict:
         start = int(self.feature_offsets[feature_id])
         end = int(self.feature_offsets[feature_id + 1])
+        token_positions = self.token_positions[start:end]
         values = self.activation_values[start:end].astype(np.float32, copy=False)
         if len(values) == 0:
             max_activation = 0.0
             mean_activation = 0.0
+            token_ids: set[int] = set()
         else:
             max_activation = float(values.max())
             mean_activation = float(values.mean())
+            token_ids = set(self.token_ids[token_positions].astype(int).tolist())
         return {
             "feature_id": feature_id,
             "max_activation": max_activation,
             "mean_activation": mean_activation,
             "activation_frequency": float(len(values)) / max(1, len(self.token_ids)),
             "num_fires": len(values),
+            "token_ids": token_ids,
         }
 
     def get_histogram(self, feature_id: int) -> list[dict]:
